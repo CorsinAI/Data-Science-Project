@@ -14,12 +14,7 @@ Seven emotion classes are supported: **angry**, **disgusted**, **fearful**, **ha
 
 This project was developed at **HSLU** as part of the **Data Science Project** course.
 
-| Name | GitHub |
-|------|--------|
-| Marco Blum | [TODO: GitHub handle] |
-| Kim Bortis | [TODO: GitHub handle] |
-| Corsin Hidber | [TODO: GitHub handle] |
-| Lukas Pfruender | [TODO: GitHub handle] |
+Members: Marco Blum, Kim Bortis, Lukas Pfründer, Corsin Hidber
 
 ## Data
 
