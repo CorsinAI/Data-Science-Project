@@ -2,12 +2,6 @@
 
 End-to-end system for detecting emotions in facial images using pretrained and custom-trained deep learning models, with an interactive dashboard and ensemble inference.
 
-## Background
-
-Recognizing human emotions from facial expressions is a long-standing challenge in computer vision. Early benchmark datasets like FER2013 established the 7-class taxonomy (angry, disgusted, fearful, happy, neutral, sad, surprised) that most research still follows, while larger-scale collections such as AffectNet and RAF-DB pushed state-of-the-art accuracies into the low-to-mid 60s on in-the-wild images. On the tooling side, open-source libraries -- notably [DeepFace](https://github.com/serengil/deepface) and [FER](https://github.com/justinshenk/fer) -- have made pretrained emotion classifiers accessible to anyone with a `pip install`.
-
-Despite this progress, practical accuracy on naturalistic faces remains modest: even well-tuned CNNs rarely exceed 70% across all seven classes, and minority emotions like *disgusted* are consistently underrecognized. This project explores that gap. We compare two off-the-shelf detectors with a custom-trained ResNet18, combine them in a simple ensemble, and document the trial-and-error involved in hyperparameter tuning, class-imbalance mitigation, and model agreement analysis.
-
 ## Team and Acknowledgements
 
 Developed at **HSLU** as part of the **Data Science Project** course ([TODO: semester]).
@@ -16,27 +10,91 @@ Members: Marco Blum, Kim Bortis, Lukas Pfruender, Corsin Hidber
 
 ## Getting Started
 
-### 1. Clone and Install
-
 ```bash
 git clone <repository-url>
 cd <repository-name>
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
 ```
 
-**Note**: Python 3.12 is recommended. The requirements file pins PyTorch with CUDA 12.4. If your system uses a different CUDA version or CPU only, install PyTorch separately following [pytorch.org](https://pytorch.org/get-started/locally/) before running `pip install -r requirements.txt`.
-
-### 2. Run the Dashboard
+**Just want to run the dashboard?** Use the lightweight requirements (CPU-only PyTorch, ~200 MB):
 
 ```bash
+pip install -r requirements-ui.txt
 streamlit run src/visualization/app.py
 ```
 
-That's it -- the dashboard should open in your browser.
+**Need GPU training as well?** Use the full requirements (includes CUDA 12.4, ~2.5 GB):
 
-### 3. Data Download
+```bash
+pip install -r requirements.txt
+```
+
+Python 3.12 is recommended. If your system uses a different CUDA version, install PyTorch separately following [pytorch.org](https://pytorch.org/get-started/locally/) before running `pip install -r requirements.txt`.
+
+## What the Dashboard Can Do
+
+The Streamlit dashboard provides four modes for exploring emotion recognition across three models (DeepFace, FER, and our Custom-ResNet18) side by side.
+
+### Batch Analysis
+
+Run all three models across an entire dataset split at once. The dashboard shows per-model accuracy, agreement statistics, and a breakdown of where the models disagree. This is how we evaluated model performance across thousands of images without writing one-off scripts.
+
+![Batch Analysis](docs/images/batch_analysis.png)
+
+The per-emotion accuracy view reveals where each model struggles. All three models handle *happy* and *surprised* well but consistently underperform on *disgusted* and *fearful* -- a direct consequence of class imbalance in the training data.
+
+![Per-Emotion Accuracy Comparison](docs/images/per_emotion_accuracy.png)
+
+### Single Image Analysis
+
+Pick any image from the dataset or upload your own. The dashboard displays each model's prediction with confidence scores, a grouped bar chart comparing probability distributions across all seven emotions, and color-coded result cards showing agreement or disagreement.
+
+When all three models agree with high confidence, the prediction is almost always correct:
+
+![All models agree on surprised](docs/images/single_image_analysis_3.png)
+
+When models disagree, it usually indicates a genuinely ambiguous expression. Here, DeepFace predicts *neutral* while FER predicts *sad* -- the true label is *sad*, and the image is arguably ambiguous:
+
+![Model disagreement on a sad face](docs/images/single_image_analysis_1.png)
+
+The hardest class is *disgusted*, where even strong predictions can split between models. Below, FER and Custom-ResNet18 both correctly predict *disgusted*, but DeepFace sees *fearful*:
+
+![Disgusted prediction with partial disagreement](docs/images/single_image_analysis_2.png)
+
+### Video Analysis
+
+Upload a video and the dashboard processes it frame-by-frame with configurable frame skip. It detects faces, runs all selected models, and produces an emotion timeline showing how predictions shift across the video. Useful for analyzing temporal consistency of predictions.
+
+![Video Analysis with emotion timeline](docs/images/video_analysis.png)
+
+### Browse Dataset
+
+Navigate training and test images by emotion class. Useful for visually inspecting data quality and class distribution before any modeling.
+
+---
+
+## Technical Details
+
+### Background
+
+Recognizing human emotions from facial expressions is a long-standing challenge in computer vision. Early benchmark datasets like FER2013 established the 7-class taxonomy (angry, disgusted, fearful, happy, neutral, sad, surprised) that most research still follows, while larger-scale collections such as AffectNet and RAF-DB pushed state-of-the-art accuracies into the low-to-mid 60s on in-the-wild images. On the tooling side, open-source libraries -- notably [DeepFace](https://github.com/serengil/deepface) and [FER](https://github.com/justinshenk/fer) -- have made pretrained emotion classifiers accessible to anyone with a `pip install`.
+
+Despite this progress, practical accuracy on naturalistic faces remains modest: even well-tuned CNNs rarely exceed 70% across all seven classes, and minority emotions like *disgusted* are consistently underrecognized. This project explores that gap. We compare two off-the-shelf detectors with a custom-trained ResNet18, combine them in a simple ensemble, and document the trial-and-error involved in hyperparameter tuning, class-imbalance mitigation, and model agreement analysis.
+
+### Our Approach
+
+We compared three detection strategies, ranging from fully pretrained to custom-trained:
+
+**DeepFace-Emotion** is the emotion analysis backend from the [DeepFace](https://github.com/serengil/deepface) library. It ships a pretrained CNN and requires no training on our side. Out of the box it reached 53% accuracy on the Faces Dataset test set -- useful as a baseline but clearly limited.
+
+**FER** (the [Facial Expression Recognition](https://github.com/justinshenk/fer) library) provides another pretrained CNN. It performed noticeably better at 63%, likely because its training data overlaps more closely with the kinds of images in our test set.
+
+**Custom-ResNet18** is where we spent most of our effort. We took a ResNet18 backbone pretrained on ImageNet and replaced the final fully-connected layer with a custom classification head for 7 emotions. ResNet18 was chosen deliberately over larger architectures: it trains in reasonable time on a consumer GPU (8 GB VRAM) while still providing enough representational capacity for this task. We used AdamW with OneCycleLR scheduling, cross-entropy with label smoothing (0.1), dropout (0.3), weight decay (0.05), and MixUp augmentation. This model reached 67.59% accuracy, and our best checkpoint (`runs/exp2_clean/`) scored 68.05% with a macro F1 of 65.30%.
+
+**Ensemble strategy.** Rather than averaging probabilities, we used a simple override rule: Custom-ResNet18 serves as the base predictor, and its prediction is overridden only when both DeepFace and FER agree on a different label. On the Faces Dataset test set this produced a net gain of +17 correct predictions out of 6,684, raising accuracy from 67.59% to 67.85%. Honest assessment: the +0.25% gain barely justifies the added complexity. A learned stacking approach would likely do better.
+
+### Datasets
 
 Download the datasets and place them under `data/raw/` matching this structure:
 
@@ -56,54 +114,11 @@ data/raw/
 | Emotion Dataset 3 | 15,339 images (12,271 train / 3,068 test) | 48x48 aligned JPEG + CSV labels | `happy` 38.8%, `disgusted` 2.3%. [TODO: source link] |
 | Faces Dataset 2 (supplementary) | 172 high-quality images | Includes demographic metadata (gender, age, country) | Quality benchmarking and bias analysis |
 
-### 4. Download Weights
-
-The trained Custom-ResNet18 checkpoint is included in the repository at `runs/exp2_clean/best.pt` (43 MB).
-
-[TODO: If weights are also hosted externally (Hugging Face / GitHub Releases), add a download link here.]
-
-### 5. Quick Inference Example (Optional)
-
-```python
-from src.emotion_detection import EmotionDetector
-
-detector = EmotionDetector()
-
-# Single image
-result = detector.detect_emotion("path/to/face.jpg")
-print(result["dominant_emotion"])
-
-# Batch processing
-results = detector.detect_emotions_batch("path/to/image_folder/")
-detector.save_results(results, "predictions.csv")
-```
-
-## The Streamlit Dashboard
-
-The interactive dashboard (`src/visualization/app.py`) provides four modes:
-
-- **Browse Dataset** -- Navigate training and test images by emotion class. Useful for visually inspecting data quality and class distribution before any modeling.
-- **Batch Analysis** -- Run all three models (DeepFace, FER, Custom-ResNet18) across an entire dataset split and view per-image predictions, agreement statistics, and confusion matrices.
-- **Upload Image** -- Drag-and-drop a single face image and get instant predictions from each model side by side. Good for quick sanity checks or demonstrations.
-- **Video Analysis** -- Process a video file frame-by-frame, detect faces, and overlay emotion predictions in real time.
-
-## Our Approach
-
-We compared three detection strategies, ranging from fully pretrained to custom-trained:
-
-**DeepFace-Emotion** is the emotion analysis backend from the [DeepFace](https://github.com/serengil/deepface) library. It ships a pretrained CNN and requires no training on our side. Out of the box it reached 53% accuracy on the Faces Dataset test set -- useful as a baseline but clearly limited.
-
-**FER** (the [Facial Expression Recognition](https://github.com/justinshenk/fer) library) provides another pretrained CNN. It performed noticeably better at 63%, likely because its training data overlaps more closely with the kinds of images in our test set.
-
-**Custom-ResNet18** is where we spent most of our effort. We took a ResNet18 backbone pretrained on ImageNet and replaced the final fully-connected layer with a custom classification head for 7 emotions. ResNet18 was chosen deliberately over larger architectures: it trains in reasonable time on a consumer GPU (8 GB VRAM) while still providing enough representational capacity for this task. We used AdamW with OneCycleLR scheduling, cross-entropy with label smoothing (0.1), dropout (0.3), weight decay (0.05), and MixUp augmentation. This model reached 67.59% accuracy, and our best checkpoint (`runs/exp2_clean/`) scored 68.05% with a macro F1 of 65.30%.
-
-**Ensemble strategy.** Rather than averaging probabilities, we used a simple override rule: Custom-ResNet18 serves as the base predictor, and its prediction is overridden only when both DeepFace and FER agree on a different label. On the Faces Dataset test set this produced a net gain of +17 correct predictions out of 6,684, raising accuracy from 67.59% to 67.85%. Honest assessment: the +0.25% gain barely justifies the added complexity. A learned stacking approach would likely do better.
-
-## Experiments and Lessons Learned
+### Experiments and Lessons Learned
 
 We ran a systematic hyperparameter search across 12 configurations, varying learning rate, batch size, epoch count, loss function, augmentation strategy, and class balancing method. Full details are in [`experiments/EXPERIMENTS_SUMMARY.md`](experiments/EXPERIMENTS_SUMMARY.md).
 
-### Training Setup
+#### Training Setup
 
 | Parameter | Value |
 |-----------|-------|
@@ -118,7 +133,7 @@ We ran a systematic hyperparameter search across 12 configurations, varying lear
 | Hardware | Local GPU with 8 GB VRAM |
 | Seed | 42 |
 
-### What We Tried and What We Learned
+#### What We Tried and What We Learned
 
 **Heavy augmentation helped the most.** The `aug_heavy` configuration (aggressive random crops, color jitter, horizontal flips) produced the best single result at 68.36% accuracy / 65.52% macro F1. This was consistently above the baseline across runs, suggesting the model was mildly overfitting with standard augmentation.
 
@@ -132,7 +147,7 @@ We ran a systematic hyperparameter search across 12 configurations, varying lear
 
 **The ensemble gain was marginal.** Adding DeepFace and FER to the override ensemble changed only 17 predictions on a 6,684-image test set. The models tend to agree on easy images and disagree on genuinely ambiguous ones, limiting the scope for ensemble correction.
 
-### Reproducing the Experiments
+#### Reproducing the Experiments
 
 ```bash
 # Single experiment (baseline)
@@ -145,7 +160,7 @@ python experiments/run_batch.py --data_root data/raw/Faces_Dataset
 
 Outputs (weights, metrics, confusion matrices) are saved under `experiments/runs/<experiment_name>/`.
 
-### Evaluation Scripts
+#### Evaluation Scripts
 
 ```bash
 # Evaluate all three models on Faces Dataset
@@ -158,9 +173,9 @@ python examples/evaluate_models_dataset3.py
 python examples/compare_original_vs_greyscale.py
 ```
 
-## Results
+### Results
 
-### Model Comparison on Faces Dataset Test Set
+#### Model Comparison on Faces Dataset Test Set
 
 | Model | Accuracy | Macro Precision | Macro Recall | Macro F1 |
 |-------|----------|-----------------|--------------|----------|
@@ -169,12 +184,12 @@ python examples/compare_original_vs_greyscale.py
 | Custom-ResNet18 | 67.59% | 66.29% | 62.87% | 63.97% |
 | Ensemble | 67.85% | 67.54% | 62.40% | 63.86% |
 
-### Best Custom-ResNet18 Checkpoint (`runs/exp2_clean/`)
+#### Best Custom-ResNet18 Checkpoint (`runs/exp2_clean/`)
 
 - **Test accuracy**: 68.05%
 - **Test macro F1**: 65.30%
 
-### Hyperparameter Tuning Highlights
+#### Hyperparameter Tuning Highlights
 
 | Experiment | Test Accuracy | Test Macro F1 |
 |------------|--------------|---------------|
@@ -187,13 +202,35 @@ python examples/compare_original_vs_greyscale.py
 
 All metrics are taken directly from experiment logs and evaluation reports in the repository.
 
-### Plots
+### Analysis
 
-![Model Comparison](docs/images/overall_comparison.png)
+Overall model performance comparison -- Custom-ResNet18 leads on both accuracy and macro F1, with the gap widening over DeepFace in particular:
 
-![Per-Emotion F1 Heatmap](docs/images/test_f1_heatmap.png)
+![Overall Model Performance Comparison](docs/images/model_comparison_overall.png)
+
+F1 scores broken down by emotion and model. *Happy* is easy for everyone; *disgusted* and *fearful* remain the hardest classes across all three models:
+
+![F1 Heatmap by Model and Emotion](docs/images/model_heatmap.png)
+
+Side-by-side precision, recall, and F1 per emotion for each model. The Custom-ResNet18 shows the most balanced performance, though it still struggles with the same minority classes:
+
+![Side-by-Side Per-Emotion Metrics](docs/images/side_by_side_comparison.png)
+
+Confusion matrix for Custom-ResNet18. The dominant misclassification pattern is *fearful* being predicted as *sad* (168 cases) and *angry* being predicted as *sad* (109 cases):
+
+![Confusion Matrix: Custom-ResNet18](docs/images/confusion_custom_resnet18.png)
+
+Model agreement analysis. All three models agree on only 46.1% of images overall, but when they do agree, accuracy jumps to 85%+ for most emotions. The exception is *disgusted* and *fearful*, where even unanimous agreement yields below 60% accuracy:
 
 ![Model Agreement by Emotion](docs/images/agreement_by_emotion.png)
+
+Hyperparameter experiment comparison across all 12 configurations. Heavy augmentation ranks first; the differences between most other configurations are narrow:
+
+![Hyperparameter Experiment Comparison](docs/images/overall_comparison.png)
+
+Per-emotion F1 scores across all 12 experiment configurations. *Happy* is robust to hyperparameter changes; *disgusted* shows the most variance, with `epochs_10_quick` performing worst (0.438) and `batch_256_larger` best (0.642):
+
+![Per-Emotion F1 Heatmap Across Experiments](docs/images/test_f1_heatmap.png)
 
 ## Limitations
 
@@ -213,7 +250,7 @@ All metrics are taken directly from experiment logs and evaluation reports in th
 │   └── visualization/
 │       └── app.py                 # Streamlit dashboard
 ├── models/
-│   └── private_modle.py           # ResNet18 training script
+│   └── private_model.py           # ResNet18 training script
 ├── experiments/
 │   ├── configs/                   # 12 YAML experiment configurations
 │   ├── runs/                      # Experiment outputs (weights, metrics)
@@ -229,7 +266,8 @@ All metrics are taken directly from experiment logs and evaluation reports in th
 ├── data/                          # Datasets (not tracked in git)
 │   ├── raw/
 │   └── processed/
-├── requirements.txt
+├── requirements.txt               # Full dependencies (GPU training)
+├── requirements-ui.txt            # Lightweight dependencies (dashboard only)
 └── .gitignore
 ```
 

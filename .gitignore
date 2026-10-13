@@ -72,9 +72,10 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDEs
+# IDEs and tool settings
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
@@ -96,6 +97,10 @@ venv.bak/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Generated reports
+results/**/*.txt
+src/data_processing/*.txt
 
 # Logs
 *.log

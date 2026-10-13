@@ -67,7 +67,7 @@ def run_experiment(config_path, data_root, force=False):
     args.extend(['--data_root', str(data_root)])
     args.extend(['--out_dir', str(out_dir)])
 
-    train_script = base_dir / "models" / "private_modle.py"
+    train_script = base_dir / "models" / "private_model.py"
 
     cmd = [sys.executable, str(train_script)] + args
 
