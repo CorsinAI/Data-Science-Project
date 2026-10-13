@@ -53,14 +53,14 @@ Unique files: 15336
 Duplicates: 3
 [WARNING] Found 3 duplicate groups:
   Group 1: 2 copies
-    - /mnt/c/Users/corsi/Coding Projects/Data Science Project/data/raw/emotion dataset 3/DATASET/train/4/train_03282_aligned.jpg
-    - /mnt/c/Users/corsi/Coding Projects/Data Science Project/data/raw/emotion dataset 3/DATASET/train/4/train_03285_aligned.jpg
+    - data/raw/emotion dataset 3/DATASET/train/4/train_03282_aligned.jpg
+    - data/raw/emotion dataset 3/DATASET/train/4/train_03285_aligned.jpg
   Group 2: 2 copies
-    - /mnt/c/Users/corsi/Coding Projects/Data Science Project/data/raw/emotion dataset 3/DATASET/train/6/train_08539_aligned.jpg
-    - /mnt/c/Users/corsi/Coding Projects/Data Science Project/data/raw/emotion dataset 3/DATASET/train/6/train_08540_aligned.jpg
+    - data/raw/emotion dataset 3/DATASET/train/6/train_08539_aligned.jpg
+    - data/raw/emotion dataset 3/DATASET/train/6/train_08540_aligned.jpg
   Group 3: 2 copies
-    - /mnt/c/Users/corsi/Coding Projects/Data Science Project/data/raw/emotion dataset 3/DATASET/test/7/test_2809_aligned.jpg
-    - /mnt/c/Users/corsi/Coding Projects/Data Science Project/data/raw/emotion dataset 3/DATASET/test/7/test_2810_aligned.jpg
+    - data/raw/emotion dataset 3/DATASET/test/7/test_2809_aligned.jpg
+    - data/raw/emotion dataset 3/DATASET/test/7/test_2810_aligned.jpg
 
 CLASS BALANCE ANALYSIS:
 ----------------------------------------------------------------------

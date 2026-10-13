@@ -51,8 +51,13 @@ models/*.pkl
 models/*.joblib
 models/*.pb
 models/*.pth
+models/*.pt
 models/*.ckpt
 !models/.gitkeep
+
+# Training run outputs (weights, matrices, logs)
+runs/
+experiments/runs/
 
 # Virtual environments
 .env
