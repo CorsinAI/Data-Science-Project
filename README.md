@@ -4,15 +4,15 @@ End-to-end system for detecting emotions in facial images using pretrained and c
 
 ## Team and Acknowledgements
 
-Developed at **HSLU** as part of the **Data Science Project** course ([TODO: semester]).
+Developed at **HSLU** as part of the **Data Science Project** course.
 
 Members: Marco Blum, Kim Bortis, Lukas Pfruender, Corsin Hidber
 
 ## Getting Started
 
 ```bash
-git clone <repository-url>
-cd <repository-name>
+git clone <https://github.com/CorsinAI/Data-Science-Project>
+cd <Data-Science-Project>
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 ```
@@ -42,7 +42,7 @@ Run all three models across an entire dataset split at once. The dashboard shows
 
 ![Batch Analysis](docs/images/batch_analysis.png)
 
-The per-emotion accuracy view reveals where each model struggles. All three models handle *happy* and *surprised* well but consistently underperform on *disgusted* and *fearful* -- a direct consequence of class imbalance in the training data.
+The per-emotion accuracy view reveals where each model struggles. All three models handle *happy* and *surprised* well but consistently underperform on *disgusted* and *fearful*. This is due to class imbalance in the training data.
 
 ![Per-Emotion Accuracy Comparison](docs/images/per_emotion_accuracy.png)
 
@@ -73,14 +73,45 @@ Upload a video and the dashboard processes it frame-by-frame with configurable f
 Navigate training and test images by emotion class. Useful for visually inspecting data quality and class distribution before any modeling.
 
 ---
+## Project Structure
+
+```
+.
+├── src/
+│   ├── emotion_detection/
+│   │   └── detector.py            # EmotionDetector class (inference API)
+│   ├── data_processing/           # Data quality assessment scripts
+│   └── visualization/
+│       └── app.py                 # Streamlit dashboard
+├── models/
+│   └── private_model.py           # ResNet18 training script
+├── experiments/
+│   ├── configs/                   # 12 YAML experiment configurations
+│   ├── runs/                      # Experiment outputs (weights, metrics)
+│   ├── results_figures/           # Generated plots and tables
+│   ├── run_experiment.py          # Single experiment runner
+│   ├── run_batch.py               # Batch experiment runner
+│   └── visualize_*.py             # Visualization scripts
+├── runs/
+│   └── exp2_clean/                # Best trained model checkpoint
+├── results/                       # Evaluation reports (ensemble, per-dataset)
+├── examples/                      # Example and evaluation scripts
+├── docs/                          # Additional documentation and images
+├── data/                          # Datasets (not tracked in git)
+│   ├── raw/
+│   └── processed/
+├── requirements.txt               # Full dependencies (GPU training)
+├── requirements-ui.txt            # Lightweight dependencies (dashboard only)
+└── .gitignore
+```
+
+---
 
 ## Technical Details
 
 ### Background
 
-Recognizing human emotions from facial expressions is a long-standing challenge in computer vision. Early benchmark datasets like FER2013 established the 7-class taxonomy (angry, disgusted, fearful, happy, neutral, sad, surprised) that most research still follows, while larger-scale collections such as AffectNet and RAF-DB pushed state-of-the-art accuracies into the low-to-mid 60s on in-the-wild images. On the tooling side, open-source libraries -- notably [DeepFace](https://github.com/serengil/deepface) and [FER](https://github.com/justinshenk/fer) -- have made pretrained emotion classifiers accessible to anyone with a `pip install`.
-
-Despite this progress, practical accuracy on naturalistic faces remains modest: even well-tuned CNNs rarely exceed 70% across all seven classes, and minority emotions like *disgusted* are consistently underrecognized. This project explores that gap. We compare two off-the-shelf detectors with a custom-trained ResNet18, combine them in a simple ensemble, and document the trial-and-error involved in hyperparameter tuning, class-imbalance mitigation, and model agreement analysis.
+Recognizing human emotions from facial expressions is a long-standing challenge in computer vision. Early benchmark datasets like FER2013 established the 7-class taxonomy (angry, disgusted, fearful, happy, neutral, sad, surprised) that most research still follows, while larger-scale collections such as AffectNet and RAF-DB pushed state-of-the-art accuracies into the low-to-mid 60s on in-the-wild images. On the tooling side, open-source libraries (notably [DeepFace](https://github.com/serengil/deepface) and [FER](https://github.com/justinshenk/fer)) have made pretrained emotion classifiers accessible to anyone with a `pip install`.
 
 ### Our Approach
 
@@ -92,7 +123,6 @@ We compared three detection strategies, ranging from fully pretrained to custom-
 
 **Custom-ResNet18** is where we spent most of our effort. We took a ResNet18 backbone pretrained on ImageNet and replaced the final fully-connected layer with a custom classification head for 7 emotions. ResNet18 was chosen deliberately over larger architectures: it trains in reasonable time on a consumer GPU (8 GB VRAM) while still providing enough representational capacity for this task. We used AdamW with OneCycleLR scheduling, cross-entropy with label smoothing (0.1), dropout (0.3), weight decay (0.05), and MixUp augmentation. This model reached 67.59% accuracy, and our best checkpoint (`runs/exp2_clean/`) scored 68.05% with a macro F1 of 65.30%.
 
-**Ensemble strategy.** Rather than averaging probabilities, we used a simple override rule: Custom-ResNet18 serves as the base predictor, and its prediction is overridden only when both DeepFace and FER agree on a different label. On the Faces Dataset test set this produced a net gain of +17 correct predictions out of 6,684, raising accuracy from 67.59% to 67.85%. Honest assessment: the +0.25% gain barely justifies the added complexity. A learned stacking approach would likely do better.
 
 ### Datasets
 
@@ -141,11 +171,10 @@ We ran a systematic hyperparameter search across 12 configurations, varying lear
 
 **Class imbalance remained our biggest headache.** `disgusted` accounts for only 2.3% of Dataset 3. We tried inverse-log class weighting and weighted random sampling (`balance_weighted_sampler`); both helped recall on rare classes but introduced instability in training loss. No single strategy fully resolved the imbalance.
 
-**Longer training showed diminishing returns.** Extending from 30 to 50 epochs (`epochs_50_extended`) gave 67.35% -- barely above baseline -- and validation loss began creeping up after epoch 35. The OneCycleLR schedule appears well-matched to 30 epochs.
+**Longer training showed diminishing returns.** Extending from 30 to 50 epochs (`epochs_50_extended`) gave 67.35% -- barely above baseline.
 
 **Smaller batches were slightly better.** Batch size 64 (`batch_64_smaller`) reached 67.46% / 65.00% F1, outperforming batch size 256 (`batch_256_larger`). The smaller batch likely provides a regularization effect through noisier gradient estimates.
 
-**The ensemble gain was marginal.** Adding DeepFace and FER to the override ensemble changed only 17 predictions on a 6,684-image test set. The models tend to agree on easy images and disagree on genuinely ambiguous ones, limiting the scope for ensemble correction.
 
 #### Reproducing the Experiments
 
@@ -204,19 +233,17 @@ All metrics are taken directly from experiment logs and evaluation reports in th
 
 ### Analysis
 
-Overall model performance comparison -- Custom-ResNet18 leads on both accuracy and macro F1, with the gap widening over DeepFace in particular:
-
 ![Overall Model Performance Comparison](docs/images/model_comparison_overall.png)
 
 F1 scores broken down by emotion and model. *Happy* is easy for everyone; *disgusted* and *fearful* remain the hardest classes across all three models:
 
 ![F1 Heatmap by Model and Emotion](docs/images/model_heatmap.png)
 
-Side-by-side precision, recall, and F1 per emotion for each model. The Custom-ResNet18 shows the most balanced performance, though it still struggles with the same minority classes:
+Side-by-side precision, recall, and F1 per emotion for each model.
 
 ![Side-by-Side Per-Emotion Metrics](docs/images/side_by_side_comparison.png)
 
-Confusion matrix for Custom-ResNet18. The dominant misclassification pattern is *fearful* being predicted as *sad* (168 cases) and *angry* being predicted as *sad* (109 cases):
+Confusion matrix for Custom-ResNet18. The dominant misclassification pattern is *fearful* being predicted as *sad*.
 
 ![Confusion Matrix: Custom-ResNet18](docs/images/confusion_custom_resnet18.png)
 
@@ -238,45 +265,3 @@ Per-emotion F1 scores across all 12 experiment configurations. *Happy* is robust
 - **Ensemble overhead vs. gain**: The override ensemble adds complexity but yields only +0.25% accuracy on the Faces Dataset. A learned combination or stacking approach could be more effective.
 - **Dataset bias**: Models were trained on aligned, cropped faces. Performance degrades on in-the-wild images where face detection must first succeed.
 - **Grayscale vs. color**: Comparison experiments are included; pretrained models (DeepFace, FER) were designed for specific input formats, limiting direct comparison.
-
-## Project Structure
-
-```
-.
-├── src/
-│   ├── emotion_detection/
-│   │   └── detector.py            # EmotionDetector class (inference API)
-│   ├── data_processing/           # Data quality assessment scripts
-│   └── visualization/
-│       └── app.py                 # Streamlit dashboard
-├── models/
-│   └── private_model.py           # ResNet18 training script
-├── experiments/
-│   ├── configs/                   # 12 YAML experiment configurations
-│   ├── runs/                      # Experiment outputs (weights, metrics)
-│   ├── results_figures/           # Generated plots and tables
-│   ├── run_experiment.py          # Single experiment runner
-│   ├── run_batch.py               # Batch experiment runner
-│   └── visualize_*.py             # Visualization scripts
-├── runs/
-│   └── exp2_clean/                # Best trained model checkpoint
-├── results/                       # Evaluation reports (ensemble, per-dataset)
-├── examples/                      # Example and evaluation scripts
-├── docs/                          # Additional documentation and images
-├── data/                          # Datasets (not tracked in git)
-│   ├── raw/
-│   └── processed/
-├── requirements.txt               # Full dependencies (GPU training)
-├── requirements-ui.txt            # Lightweight dependencies (dashboard only)
-└── .gitignore
-```
-
-## Open TODOs
-
-The following items require manual completion before the repository is fully portfolio-ready:
-
-- [ ] Add GitHub handles for all team members in the Team section
-- [ ] Add semester/term to Acknowledgements
-- [ ] Add source links for Faces Dataset and Emotion Dataset 3
-- [ ] Add external hosting link for model weights (if applicable)
-- [ ] Optionally add individual contribution descriptions per team member
