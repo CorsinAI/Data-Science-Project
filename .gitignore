@@ -36,7 +36,7 @@ data/processed/*
 *.h5
 *.hdf5
 
-# Image files
+# Image files (dataset images)
 *.jpg
 *.jpeg
 *.png
@@ -44,6 +44,10 @@ data/processed/*
 *.bmp
 *.tiff
 *.webp
+
+# Allow documentation images
+!docs/images/*.png
+!docs/images/*.jpg
 
 # Model files
 models/*.h5
