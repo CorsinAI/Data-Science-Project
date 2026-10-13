@@ -36,6 +36,14 @@ data/processed/*
 *.h5
 *.hdf5
 
+# Video and model files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.pt
+*.pth
+
 # Image files (dataset images)
 *.jpg
 *.jpeg
