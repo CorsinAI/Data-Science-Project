@@ -10,10 +10,19 @@ Members: Marco Blum, Kim Bortis, Lukas Pfruender, Corsin Hidber
 
 ## Getting Started
 
+### Prerequisites
+
+**Python 3.12** is required. The pinned dependency versions do not have prebuilt wheels for Python 3.13+.
+
+- **Windows/Mac**: Download from [python.org](https://www.python.org/downloads/release/python-3129/) and check "Add to PATH" during installation.
+- **Linux**: `sudo apt install python3.12 python3.12-venv` (Ubuntu/Debian) or use [pyenv](https://github.com/pyenv/pyenv).
+
+### Setup
+
 ```bash
-git clone <https://github.com/CorsinAI/Data-Science-Project>
-cd <Data-Science-Project>
-python -m venv venv
+git clone https://github.com/CorsinAI/Data-Science-Project
+cd Data-Science-Project
+python3.12 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 ```
 
@@ -30,7 +39,7 @@ streamlit run src/visualization/app.py
 pip install -r requirements.txt
 ```
 
-Python 3.12 is recommended. If your system uses a different CUDA version, install PyTorch separately following [pytorch.org](https://pytorch.org/get-started/locally/) before running `pip install -r requirements.txt`.
+If your system uses a different CUDA version, install PyTorch separately following [pytorch.org](https://pytorch.org/get-started/locally/) before running `pip install -r requirements.txt`.
 
 ## What the Dashboard Can Do
 
